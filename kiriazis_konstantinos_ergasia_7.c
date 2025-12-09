@@ -66,6 +66,28 @@ int findnode( int a[], int currentNode, int x)
     return -1; 
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////
+void findSortestPath(TPath allPaths[], int numOfPaths, int minPaths[]) 
+{   
+    int i;
+	int j=0;
+    int minPathCost = allPaths[0].path_cost;
+    for(i=1; i<numOfPaths; i++) 
+    { 
+        if(allPaths[i].path_cost < minPathCost) 
+        {            
+            minPathCost = allPaths[i].path_cost;
+        } 
+    }
+    for(i=0; i<numOfPaths; i++)
+    {
+		if(minPathCost == allPaths[i].path_cost)
+		{
+			minPaths[j] = i;
+			j++;
+		}
+    }
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 void printarr( int a[], int n) 
@@ -141,6 +163,7 @@ int main(void)
     TBranch myBranches[40]; 
     int connection_array[40][40]={0}; 
     int path_array[40]; 
+    int equalShortPaths[40];
     int pk; 
     int i, num_of_branches, num_of_nodes, maxn, path_idx;
     TPath myPaths[40];
@@ -160,28 +183,43 @@ int main(void)
     */ 
     /**/  
     //test graph 
-    num_of_branches=7; 
-    myBranches[0].node1=0; 
-    myBranches[0].node2=1; 
+    num_of_branches=12; 
+	myBranches[0].node1=4; 
+    myBranches[0].node2=6; 
     myBranches[0].branch_weight=6;
-    myBranches[1].node1=1; 
-    myBranches[1].node2=2; 
+	myBranches[1].node1=2; 
+    myBranches[1].node2=6; 
     myBranches[1].branch_weight=9;
-    myBranches[2].node1=2; 
-    myBranches[2].node2=3; 
+    myBranches[2].node1=0; 
+    myBranches[2].node2=1; 
     myBranches[2].branch_weight=4;
-    myBranches[3].node1=3; 
-    myBranches[3].node2=4; 
+    myBranches[3].node1=1; 
+    myBranches[3].node2=2; 
     myBranches[3].branch_weight=7;
-    myBranches[4].node1=0; 
-    myBranches[4].node2=3;
-    myBranches[4].branch_weight=2;   
-    myBranches[5].node1=0; 
-    myBranches[5].node2=4;
-    myBranches[5].branch_weight=4;   
-    myBranches[6].node1=2; 
-    myBranches[6].node2=4; 
-    myBranches[6].branch_weight=1;
+    myBranches[4].node1=2; 
+    myBranches[4].node2=3; 
+    myBranches[4].branch_weight=0;
+    myBranches[5].node1=3; 
+    myBranches[5].node2=4; 
+    myBranches[5].branch_weight=9;
+    myBranches[6].node1=0; 
+    myBranches[6].node2=3;
+    myBranches[6].branch_weight=6;   
+    myBranches[7].node1=0; 
+    myBranches[7].node2=4;
+    myBranches[7].branch_weight=3;   
+    myBranches[8].node1=2; 
+    myBranches[8].node2=4; 
+    myBranches[8].branch_weight=8;
+    myBranches[9].node1=4; 
+    myBranches[9].node2=5; 
+    myBranches[9].branch_weight=2;
+    myBranches[10].node1=0; 
+    myBranches[10].node2=5; 
+    myBranches[10].branch_weight=1;
+    myBranches[11].node1=2; 
+    myBranches[11].node2=5; 
+    myBranches[11].branch_weight=1;
     /**/ 
     printf("\n\n"); 
     printf("Processing ..\n"); 
@@ -233,7 +271,19 @@ int main(void)
     }
 
 
+    findSortestPath(myPaths, path_idx, equalShortPaths);
+    printf("\n================================================================================");
+	printf("\nThe sortest path is No=%2d cost=%3d  nodeCount=%2d  path=", equalShortPaths[0], myPaths[equalShortPaths[0]].path_cost, myPaths[0].pk );
+	printPath(myPaths[equalShortPaths[0]]);
+	for(i=1; i<path_idx; i++)
+	{
+		if(equalShortPaths[i] != 0)
+		{
+    		printf("Same cost for path  No=%2d cost=%3d  nodeCount=%2d  path=", equalShortPaths[i], myPaths[equalShortPaths[i]].path_cost, myPaths[equalShortPaths[i]].pk );
+    		printPath(myPaths[equalShortPaths[i]]);
+		}
+	}
+    printf("================================================================================\n\n");
 
-    printf("\n");
     return 0; 
 }
