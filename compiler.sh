@@ -22,6 +22,12 @@ case "$user_choice" in
     [7])
         source_file="kiriazis_konstantinos_ergasia_7.c"
         ;;
+    [8])
+        source_file="kiriazis_konstantinos_ergasia_8.c"
+        ;;
+    [9])
+        source_file="kiriazis_konstantinos_ergasia_9.c"
+        ;;
 
     *)
         echo "Invalid choice. Exiting."
