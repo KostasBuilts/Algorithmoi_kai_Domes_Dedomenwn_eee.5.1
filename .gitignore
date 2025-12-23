@@ -1,2 +1,5 @@
 *.csv
 *.xlsx
+*.bak
+*.txt
+*.elf

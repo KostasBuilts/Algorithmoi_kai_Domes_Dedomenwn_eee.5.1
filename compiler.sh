@@ -36,7 +36,7 @@ case "$user_choice" in
 esac
 
 # Compile the chosen source file
-gcc "$source_file" -o program_out -lm
+gcc "$source_file" -o program_out.elf -lm
 
 # Check for successful compilation
 if [ $? -ne 0 ]; then
@@ -48,4 +48,4 @@ fi
 chmod +x program_out
 clear
 echo "Running $source_file..."
-./program_out
+./program_out.elf

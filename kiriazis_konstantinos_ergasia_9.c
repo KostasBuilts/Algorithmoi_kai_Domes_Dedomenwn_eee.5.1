@@ -133,24 +133,24 @@ void objmove(TObj *pobj, V2D fv, double dt)
 void initializePlanets(TObj planets[])
 {
     // Planhtas 1: Kentriko me megalh maza
-    planets[0].m = 10000;
+    planets[0].m = 100;
     planets[0].rv = vset(0, 0);
     planets[0].uv = vset(0, 0);
     planets[0].movable = 0;
     planets[0].is_planet = 1;
-    strcpy(planets[0].name, "Planet_A");
+    strcpy(planets[0].name, "SUN");
     
     // Planhtas 2: Se tetragwno thesi
-    planets[1].m = 5000;
-    planets[1].rv = vset(40, 40);
+    planets[1].m = 0.00000000001;
+    planets[1].rv = vset(0, 0);
     planets[1].uv = vset(0, 0);
     planets[1].movable = 0;
     planets[1].is_planet = 1;
     strcpy(planets[1].name, "Planet_B");
     
     // Planhtas 3: Se allh thesi
-    planets[2].m = 8000;
-    planets[2].rv = vset(-30, 30);
+    planets[2].m = 0.00000000001;
+    planets[2].rv = vset(0, 0);
     planets[2].uv = vset(0, 0);
     planets[2].movable = 0;
     planets[2].is_planet = 1;
@@ -169,7 +169,7 @@ void inputSatellites(TObj satellites[], int *n)
     printf("===============================================\n\n");
     
     do {
-        printf("Doste arithmo doruforwn (1-10): ");
+        printf("Doste arithmo doruforwn (3-10): ");
         scanf("%d", n);
         if (*n < 1 || *n > 10) {
             printf("Lathos! Prepei 3-10 doruforoi.\n");
@@ -203,6 +203,34 @@ void inputSatellites(TObj satellites[], int *n)
         printf("  H taxythta gia kyklikh troxia einai: %.3f\n", u_circular);
         printf("  H taxythta sas einai: %.3f\n", vmetro(satellites[i].uv));
     }
+}
+
+void internal_Satellites(TObj planets[])
+{
+    // OPTIONAL: Test moon-moon system (comment out when using user input)
+    // EARTH-like body
+    planets[3].m = 1;
+    planets[3].rv = vset(10, 0);
+    planets[3].uv = vset(0, 3.16227766);  // sqrt(G*10000/100) = 10
+    planets[3].movable = 1;
+    planets[3].is_planet = 0;
+    strcpy(planets[3].name, "EARTH");
+    
+    // MOON orbiting Earth
+    planets[4].m = 1;
+    planets[4].rv = vset(12, 0);  // 10 units from Earth
+    planets[4].uv = vset(0, 3.86938444);  // Earth's velocity (10) + sqrt(G*100/10)=0.316
+    planets[4].movable = 1;
+    planets[4].is_planet = 0;
+    strcpy(planets[4].name, "MOON");
+    
+    // MOON's MOON
+    planets[5].m = 0.01;
+    planets[5].rv = vset(12.5, 0);  // 2 units from Moon
+    planets[5].uv = vset(0, 4.31659804);  // Moon's velocity + sqrt(G*1/2)=0.075
+    planets[5].movable = 1;
+    planets[5].is_planet = 0;
+    strcpy(planets[5].name, "MOON-MOON");
 }
 
 /*------------------------------------*/
@@ -246,12 +274,17 @@ int main(void)
     int num_satellites, steps, i, j, k;
     int total_objects;
     TObj objects[MAX_OBJECTS];
+    V2D totalForces[MAX_OBJECTS];
     
     // Arxikopoiisi twn 3 planhtwn
     initializePlanets(objects);
     
     // Eidagwgh doruforwn apo xrhsth
-    inputSatellites(&objects[NUM_PLANETS], &num_satellites);
+    //inputSatellites(&objects[NUM_PLANETS], &num_satellites);
+    
+    internal_Satellites(objects);
+    num_satellites = 3;
+
     
     total_objects = NUM_PLANETS + num_satellites;
     
@@ -272,11 +305,11 @@ int main(void)
     }
     
     // Grammh epikefalidas gia to Excel
-    // fprintf(fp, "Time");
-    // for (i = 0; i < total_objects; i++) {
-    //     fprintf(fp, ";%s_x;%s_y", objects[i].name, objects[i].name);
-    // }
-    // fprintf(fp, "\n");
+    fprintf(fp, "Time");
+    for (i = 0; i < total_objects; i++) {
+        fprintf(fp, ";%s_x;%s_y", objects[i].name, objects[i].name);
+    }
+    fprintf(fp, "\n");
     
     // Arxikh apothikeysh
     saveTrajectories(fp, objects, total_objects, 0);
@@ -305,12 +338,12 @@ int main(void)
         }
         
         // Ypologismos dynamewn gia kathe doruforo
-        V2D totalForces[MAX_OBJECTS] = {0};
+        for (j = 0; j < total_objects; j++) {
+            totalForces[j] = vset(0, 0);
+        }
         
         // Gia kathe doruforo
         for (j = NUM_PLANETS; j < total_objects; j++) {
-            totalForces[j] = vset(0, 0);
-            
             // Dinameis apo olous tous planhtes
             for (k = 0; k < NUM_PLANETS; k++) {
                 V2D f = gravforce(objects[j].m, objects[j].rv, 
@@ -318,7 +351,7 @@ int main(void)
                 totalForces[j] = vadd(totalForces[j], f);
             }
             
-            // Dinameis apo tous allous doruforous (mikres)
+            // Dinameis apo tous allous doruforous (SATELLITE-TO-SATELLITE FORCES ADDED)
             for (k = NUM_PLANETS; k < total_objects; k++) {
                 if (j != k) {
                     V2D f = gravforce(objects[j].m, objects[j].rv, 
@@ -347,7 +380,7 @@ int main(void)
                 double planet_radius = 3.0; // Efektikh aktina planhti
                 
                 if (distance < planet_radius) {
-                    printf("\n! SYMBASH: %s xtypise ton %s (dist=%.3f)\n",
+                    printf("\n! SYMBASH: %s xtypise ton %s (dist=%.3f)\n", 
                            objects[j].name, objects[k].name, distance);
                     // Mhdenismos taxytitas
                     objects[j].uv = vset(0, 0);
