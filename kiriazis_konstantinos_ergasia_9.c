@@ -147,7 +147,7 @@ void initializePlanets(TObj planets[])
     planets[1].movable = 0;
     strcpy(planets[1].name, "Shepherd1");
     
-    planets[2].m = 1;
+    planets[2].m = 5000;
     planets[2].rv = vset(-300, -300);
     planets[2].uv = vset(0, 0);
     planets[2].movable = 0;
@@ -207,22 +207,22 @@ void internal_Satellites(TObj planets[])
 {
 
     planets[3].m = 10;
-    planets[3].rv = vset(0, -10);
+    planets[3].rv = vset(0.1, 0);
     planets[3].uv = vset(10, 10);
     planets[3].movable = 1;
     strcpy(planets[3].name, "A");
     
-    planets[4].m = 5;
-    planets[4].rv = vset(0, -10);
-    planets[4].uv = vset(-10, -10);
+    planets[4].m = 10;
+    planets[4].rv = vset(-0.1, 0);
+    planets[4].uv = vset(-10, 10);
     planets[4].movable = 1;
     strcpy(planets[4].name, "B");
     
-    // planets[5].m = 5;
-    // planets[5].rv = vset(-15, 0);
-    // planets[5].uv = vset(0, -22);
-    // planets[5].movable = 1;
-    // strcpy(planets[5].name, "Ring1_3");
+    planets[5].m = 10;
+    planets[5].rv = vset(0, -5);
+    planets[5].uv = vset(20, 5);
+    planets[5].movable = 1;
+    strcpy(planets[5].name, "C");
 }
 
 /*------------------------------------*/
@@ -326,10 +326,10 @@ int main(void)
     // Eidagwgh doruforwn apo xrhsth
     //inputSatellites(&objects[NUM_PLANETS], &num_satellites);
     
-    readSatellitesFromFile(&objects[NUM_PLANETS], &num_satellites);
+    //readSatellitesFromFile(&objects[NUM_PLANETS], &num_satellites);
 
-    //internal_Satellites(objects);
-    //num_satellites = 2;
+    internal_Satellites(objects);
+    num_satellites = 3;
     
     total_objects = NUM_PLANETS + num_satellites;
     
@@ -339,7 +339,7 @@ int main(void)
     // printf("Doste arithmo bhmatwn prosomoiwshs (p.x. 10000-50000): ");
     // scanf("%d", &steps);
     
-    dt = 0.0001;
+    dt = 0.001;
     steps = 10000;
 
     // Emfanish plhroforiwn systhmatos
@@ -377,7 +377,7 @@ int main(void)
         // if (i % 10 == 0) 
         // {
             saveTrajectories(fp, objects, total_objects, t);
-        // }
+        //}
         
         // Emfanish kathe 500 bhmata
         // if (i % 500 == 0) {
@@ -405,7 +405,7 @@ int main(void)
                 totalForces[j] = vadd(totalForces[j], f);
             }
             
-            // Dinameis apo tous allous doruforous (SATELLITE-TO-SATELLITE FORCES ADDED)
+            //Dinameis apo tous allous doruforous (SATELLITE-TO-SATELLITE FORCES ADDED)
             for (k = NUM_PLANETS; k < total_objects; k++) 
             {
                 if (j != k) 
