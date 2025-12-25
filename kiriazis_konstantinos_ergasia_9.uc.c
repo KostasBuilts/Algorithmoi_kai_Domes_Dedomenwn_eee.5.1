@@ -10,6 +10,7 @@ kai N eisagomenous doruforous (max 10)
 
 #define MAX_OBJECTS 13  // 3 planhtes + 10 doruforoi
 #define NUM_PLANETS 3   // Statheroi planhtes
+#define COLLISION_RADIUS 0.5  // Minimum distance before collision occurs
 
 typedef struct{ 
     double x;
@@ -38,12 +39,27 @@ V2D vadd (V2D a, V2D b)
 }
 
 /*------------------------------------*/
+V2D vsub (V2D a, V2D b)
+{
+    V2D c;
+    c.x = a.x - b.x;
+    c.y = a.y - b.y;
+    return c;
+}
+
+/*------------------------------------*/
 V2D vkmult (double k , V2D a)
 {
     V2D c;
     c.x = k * a.x;
     c.y = k * a.y;
     return c;
+}
+
+/*------------------------------------*/
+double vdot(V2D a, V2D b)
+{
+    return a.x * b.x + a.y * b.y;
 }
 
 /*------------------------------------*/
@@ -133,22 +149,119 @@ void objmove(TObj *pobj, V2D fv, double dt)
 }
 
 /*------------------------------------*/
+int checkCollision(TObj obj1, TObj obj2)
+{
+    // Planets are immovable and don't collide with each other
+    if (!obj1.movable && !obj2.movable) return 0;
+    
+    // Calculate distance
+    double distance = dobjs(obj1, obj2);
+    
+    // Check if distance is less than collision radius
+    return (distance < COLLISION_RADIUS);
+}
+
+/*------------------------------------*/
+void resolveCollision(TObj *obj1, TObj *obj2)
+{
+    printf("\n--- COLLISION DETECTED ---\n");
+    printf("Objects: %s (m=%.2f) and %s (m=%.2f)\n", obj1->name, obj1->m, obj2->name, obj2->m);
+    printf("Positions: %s(%.3f, %.3f) %s(%.3f, %.3f)\n", 
+           obj1->name, obj1->rv.x, obj1->rv.y,
+           obj2->name, obj2->rv.x, obj2->rv.y);
+    
+    // Case 1: Both are satellites - ELASTIC COLLISION
+    if (obj1->movable && obj2->movable) {
+        printf("Type: Satellite-satellite ELASTIC collision\n");
+        
+        // Calculate collision normal (unit vector from obj1 to obj2)
+        V2D collisionNormal = vnorm(vsub(obj2->rv, obj1->rv));
+        
+        // Calculate relative velocity
+        V2D relativeVelocity = vsub(obj1->uv, obj2->uv);
+        
+        // Calculate relative velocity along collision normal
+        double velocityAlongNormal = vdot(relativeVelocity, collisionNormal);
+        
+        // Only resolve if objects are moving towards each other
+        if (velocityAlongNormal > 0) {
+            printf("Objects moving away - no collision resolution needed\n");
+            printf("--------------------------------\n");
+            //return;
+        }
+        
+        // Perfectly elastic collision (restitution = 1.0)
+        double restitution = 1.0;
+        
+        // Calculate impulse scalar
+        double impulseScalar = -(1 + restitution) * velocityAlongNormal;
+        impulseScalar /= (1/obj1->m + 1/obj2->m);
+        
+        // Store old velocities for reference
+        V2D old_u1 = obj1->uv;
+        V2D old_u2 = obj2->uv;
+        
+        // Update velocities using conservation of momentum
+        obj1->uv = vadd(obj1->uv, vkmult(-impulseScalar/obj1->m, collisionNormal));
+        obj2->uv = vadd(obj2->uv, vkmult(impulseScalar/obj2->m, collisionNormal));
+        
+        printf("Velocity changes:\n");
+        printf("  %s: (%.3f, %.3f) -> (%.3f, %.3f)\n", 
+               obj1->name, old_u1.x, old_u1.y, obj1->uv.x, obj1->uv.y);
+        printf("  %s: (%.3f, %.3f) -> (%.3f, %.3f)\n", 
+               obj2->name, old_u2.x, old_u2.y, obj2->uv.x, obj2->uv.y);
+        
+        printf("Collision resolved elastically\n");
+    }
+    // Case 2: Satellite collides with planet
+    else if (obj1->movable && !obj2->movable) {
+        printf("Type: Satellite-planet collision\n");
+        
+        // Store old velocity for reference
+        V2D old_u = obj1->uv;
+        
+        // Zero the satellite's velocity (inelastic collision with much larger mass)
+        obj1->uv = vset(0, 0);
+        
+        printf("%s velocity zeroed: (%.3f, %.3f) -> (0, 0)\n", 
+               obj1->name, old_u.x, old_u.y);
+        printf("%s (planet) unaffected\n", obj2->name);
+    }
+    // Case 3: Planet collides with satellite
+    else if (!obj1->movable && obj2->movable) {
+        printf("Type: Planet-satellite collision\n");
+        
+        // Store old velocity for reference
+        V2D old_u = obj2->uv;
+        
+        // Zero the satellite's velocity
+        obj2->uv = vset(0, 0);
+        
+        printf("%s velocity zeroed: (%.3f, %.3f) -> (0, 0)\n", 
+               obj2->name, old_u.x, old_u.y);
+        printf("%s (planet) unaffected\n", obj1->name);
+    }
+    
+    printf("--------------------------------\n");
+}
+
+/*------------------------------------*/
 void initializePlanets(TObj planets[])
 {
-    planets[0].m = 5000;
-    planets[0].rv = vset(5, 5);
+    planets[0].m = 1;
+    planets[0].rv = vset(0, -500);
     planets[0].uv = vset(0, 0);
     planets[0].movable = 0;
     strcpy(planets[0].name, "Central");
     
-    planets[1].m = 5000;
-    planets[1].rv = vset(-5, 5);
+    planets[1].m = 1;
+    planets[1].rv = vset(0, -500);
     planets[1].uv = vset(0, 0);
     planets[1].movable = 0;
     strcpy(planets[1].name, "Shepherd1");
     
-    planets[2].m = 5000;
-    planets[2].rv = vset(-300, -300);
+    planets[2].m = 2;
+    planets[2].rv = vset(0, 500);
     planets[2].uv = vset(0, 0);
     planets[2].movable = 0;
     strcpy(planets[2].name, "Shepherd2");
@@ -207,22 +320,22 @@ void internal_Satellites(TObj planets[])
 {
 
     planets[3].m = 10;
-    planets[3].rv = vset(0.1, 0);
-    planets[3].uv = vset(10, 10);
+    planets[3].rv = vset(10, 0);
+    planets[3].uv = vset(-1, 0);
     planets[3].movable = 1;
     strcpy(planets[3].name, "A");
     
     planets[4].m = 10;
-    planets[4].rv = vset(-0.1, 0);
-    planets[4].uv = vset(-10, 10);
+    planets[4].rv = vset(-10, 0);
+    planets[4].uv = vset(1, 0);
     planets[4].movable = 1;
     strcpy(planets[4].name, "B");
     
-    planets[5].m = 10;
-    planets[5].rv = vset(0, -5);
-    planets[5].uv = vset(20, 5);
-    planets[5].movable = 1;
-    strcpy(planets[5].name, "C");
+    // planets[5].m = 10;
+    // planets[5].rv = vset(0, -5);
+    // planets[5].uv = vset(20, 5);
+    // planets[5].movable = 1;
+    // strcpy(planets[5].name, "C");
 }
 
 /*------------------------------------*/
@@ -329,7 +442,7 @@ int main(void)
     //readSatellitesFromFile(&objects[NUM_PLANETS], &num_satellites);
 
     internal_Satellites(objects);
-    num_satellites = 3;
+    num_satellites = 2;
     
     total_objects = NUM_PLANETS + num_satellites;
     
@@ -339,8 +452,8 @@ int main(void)
     // printf("Doste arithmo bhmatwn prosomoiwshs (p.x. 10000-50000): ");
     // scanf("%d", &steps);
     
-    dt = 0.001;
-    steps = 10000;
+    dt = 0.0001;
+    steps = 100000;
 
     // Emfanish plhroforiwn systhmatos
     printSystemInfo(objects, total_objects, num_satellites);
@@ -374,10 +487,10 @@ int main(void)
         t = i * dt;
         
         // Apothikeysh theshs (kathe 10 bhmata)
-        // if (i % 10 == 0) 
-        // {
+        if (i % 100 == 0) 
+        {
             saveTrajectories(fp, objects, total_objects, t);
-        //}
+        }
         
         // Emfanish kathe 500 bhmata
         // if (i % 500 == 0) {
@@ -388,13 +501,25 @@ int main(void)
         //     }
         //     printf("\n");
         // }
-        
+
         // Ypologismos dynamewn gia kathe doruforo
         for (j = 0; j < total_objects; j++) 
         {
             totalForces[j] = vset(0, 0);
         }
         
+        // CHECK FOR COLLISIONS BEFORE MOVEMENT
+        for (j = 0; j < total_objects; j++) 
+        {            
+            for (k = j + 1; k < total_objects; k++) 
+            {                
+                if (checkCollision(objects[j], objects[k])) {
+                    resolveCollision(&objects[j], &objects[k]);
+                }
+            }
+        }
+
+
         // Gia kathe doruforo
         for (j = NUM_PLANETS; j < total_objects; j++) 
         {
