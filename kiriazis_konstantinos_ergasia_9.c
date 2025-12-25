@@ -10,6 +10,7 @@ kai N eisagomenous doruforous (max 10)
 
 #define MAX_OBJECTS 13  // 3 planhtes + 10 doruforoi
 #define NUM_PLANETS 3   // Statheroi planhtes
+#define SAMPLES     1000
 
 typedef struct{ 
     double x;
@@ -147,8 +148,8 @@ void initializePlanets(TObj planets[])
     planets[1].movable = 0;
     strcpy(planets[1].name, "Shepherd1");
     
-    planets[2].m = 5000;
-    planets[2].rv = vset(-300, -300);
+    planets[2].m = 500;
+    planets[2].rv = vset(0, -5);
     planets[2].uv = vset(0, 0);
     planets[2].movable = 0;
     strcpy(planets[2].name, "Shepherd2");
@@ -206,23 +207,35 @@ void inputSatellites(TObj satellites[], int *n)
 void internal_Satellites(TObj planets[])
 {
 
-    planets[3].m = 10;
-    planets[3].rv = vset(0.1, 0);
-    planets[3].uv = vset(10, 10);
+    planets[3].m =15;
+    planets[3].rv = vset(20, 20);
+    planets[3].uv = vset(-10, 0);
     planets[3].movable = 1;
-    strcpy(planets[3].name, "A");
+    strcpy(planets[3].name, "Flower_1");
     
-    planets[4].m = 10;
-    planets[4].rv = vset(-0.1, 0);
-    planets[4].uv = vset(-10, 10);
-    planets[4].movable = 1;
-    strcpy(planets[4].name, "B");
+    // planets[4].m = 50;
+    // planets[4].rv = vset(30, 0);
+    // planets[4].uv = vset(0, 20);
+    // planets[4].movable = 1;
+    // strcpy(planets[4].name, "Flower_2");
     
-    planets[5].m = 10;
-    planets[5].rv = vset(0, -5);
-    planets[5].uv = vset(20, 5);
-    planets[5].movable = 1;
-    strcpy(planets[5].name, "C");
+    // planets[5].m = 50;
+    // planets[5].rv = vset(30, 0);
+    // planets[5].uv = vset(0, 20);
+    // planets[5].movable = 1;
+    // strcpy(planets[5].name, "Planet_B");
+    
+    // planets[6].m = 4;
+    // planets[6].rv = vset(31, 0);
+    // planets[6].uv = vset(0, 27);
+    // planets[6].movable = 1;
+    // strcpy(planets[6].name, "Moon_B");
+
+    // planets[7].m = 10;
+    // planets[7].rv = vset(-4, 3);
+    // planets[7].uv = vset(-10, 10);
+    // planets[7].movable = 1;
+    // strcpy(planets[7].name, "Eyebrow 2");
 }
 
 /*------------------------------------*/
@@ -314,7 +327,7 @@ void printSystemInfo(TObj objects[], int total_objects, int num_satellites)
 int main(void)
 {
     FILE *fp;
-    double t, dt;
+    double t, dt, total_time;
     int num_satellites, steps, i, j, k;
     int total_objects;
     TObj objects[MAX_OBJECTS];
@@ -326,10 +339,10 @@ int main(void)
     // Eidagwgh doruforwn apo xrhsth
     //inputSatellites(&objects[NUM_PLANETS], &num_satellites);
     
-    //readSatellitesFromFile(&objects[NUM_PLANETS], &num_satellites);
+    readSatellitesFromFile(&objects[NUM_PLANETS], &num_satellites);
 
-    internal_Satellites(objects);
-    num_satellites = 3;
+    //internal_Satellites(objects);
+    //num_satellites = 1;
     
     total_objects = NUM_PLANETS + num_satellites;
     
@@ -339,8 +352,9 @@ int main(void)
     // printf("Doste arithmo bhmatwn prosomoiwshs (p.x. 10000-50000): ");
     // scanf("%d", &steps);
     
-    dt = 0.001;
-    steps = 10000;
+    dt = 0.000001;
+    total_time = 11.37;
+    steps = total_time/dt;
 
     // Emfanish plhroforiwn systhmatos
     printSystemInfo(objects, total_objects, num_satellites);
@@ -374,10 +388,10 @@ int main(void)
         t = i * dt;
         
         // Apothikeysh theshs (kathe 10 bhmata)
-        // if (i % 10 == 0) 
-        // {
+        if (i % (steps/SAMPLES) == 0) 
+        {
             saveTrajectories(fp, objects, total_objects, t);
-        //}
+        }
         
         // Emfanish kathe 500 bhmata
         // if (i % 500 == 0) {
