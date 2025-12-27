@@ -1,35 +1,48 @@
 /*
 Efarmmogh fysikhs: kinhsh mazas se barytiko pedio
-Genikeymeno programma me 3 statherous planhtes (terasties mazes)
-kai N eisagomenous doruforous (max 10)
+Genikeymeno programma me 3 statherous planhtes
+kai N eisagomenous doruforous
 */
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_OBJECTS 13  // 3 planhtes + 10 doruforoi
-#define NUM_PLANETS 3   // Statheroi planhtes
-#define SAMPLES     1000
+#define MAX_OBJECTS     13  // 3 planhtes + 10 doruforoi
+#define NUM_PLANETS     3   // Statheroi planhtes
+#define SAMPLES         1000 // Posa tha einai ta telika samples sto arxeio
+#define DISPLAY_RATE    50
 
 typedef struct{ 
-    double x;
-    double y;
+    double x;  /**< X-coordinate of the vector */
+    double y;  /**< Y-coordinate of the vector */
 } V2D;
 
 typedef struct{
-    double m;
-    V2D av;
-    V2D uv;
-    V2D rv;
-    V2D nextrv;
-    int movable;
-    char name[20];
+    double m;      /// Mass of the object
+    V2D av;        /// Acceleration vector (a_x, a_y)
+    V2D uv;        /// Velocity vector (u_x, u_y)
+    V2D rv;        /// Position vector (x, y)
+    V2D nextrv;    /// Next position vector (used for integration)
+    int movable;   /// Flag indicating if object can move (1=movable, 0=fixed)
+    char name[20]; /// Name identifier for the object
 } TObj;
 
 const double G = 1.0;
+double dt, total_time;
 
-/*------------------------------------*/
+/**
+ * @brief Sum of two vectors.
+ * @param V2D a - First vector
+ * @param V2D b - Second vector
+ * @return V2D a+b
+ * @details Adds two vectors component-wise and returns their sum as a new vector.
+ * @code
+ * V2D result = vadd(vec1, vec2);
+ * // result.x = vec1.x + vec2.x
+ * // result.y = vec1.y + vec2.y
+ * @endcode
+ */
 V2D vadd (V2D a, V2D b)
 {
     V2D c;
@@ -38,7 +51,18 @@ V2D vadd (V2D a, V2D b)
     return c;
 }
 
-/*------------------------------------*/
+/**
+ * @brief Scalar multiplication of a vector.
+ * @param double k - Scalar multiplier
+ * @param V2D a - Vector to be multiplied
+ * @return V2D k*a
+ * @details Multiplies each component of vector a by scalar k. Returns a new vector scaled by factor k.
+ * @code
+ * V2D result = vkmult(2.5, vec);
+ * // result.x = 2.5 * vec.x
+ * // result.y = 2.5 * vec.y
+ * @endcode
+ */
 V2D vkmult (double k , V2D a)
 {
     V2D c;
@@ -47,7 +71,16 @@ V2D vkmult (double k , V2D a)
     return c;
 }
 
-/*------------------------------------*/
+/**
+ * @brief Magnitude (Euclidean norm) of a vector.
+ * @param V2D a - Input vector
+ * @return double |a|
+ * @details Calculates the Euclidean length of vector a. Uses the formula: sqrt(x² + y²)
+ * @code
+ * double length = vmetro(vec);
+ * // length = sqrt(vec.x*vec.x + vec.y*vec.y)
+ * @endcode
+ */
 double vmetro(V2D a)
 {
     double d;
@@ -55,13 +88,32 @@ double vmetro(V2D a)
     return d;
 }
 
-/*------------------------------------*/
+/**
+ * @brief Print vector components.
+ * @param V2D a - Vector to be printed
+ * @return void
+ * @details Displays the vector components to standard output with 6 decimal precision. Format: "x.xxxxxx y.yyyyyy"
+ * @code
+ * printV2D(vec);
+ * // Output: "1.234567 -2.345678"
+ * @endcode
+ */
 void printV2D (V2D a)
 {
     printf("%.6f %.6f\n", a.x, a.y);
 }
 
-/*------------------------------------*/
+/**
+ * @brief Vector from point to point.
+ * @param V2D r1 - Starting point (position vector of first object)
+ * @param V2D r2 - Ending point (position vector of second object)
+ * @return V2D r2 - r1
+ * @details Calculates the displacement vector from point r1 to point r2. Used for determining relative positions between objects.
+ * @code
+ * V2D displacement = vpp(object1.rv, object2.rv);
+ * // displacement points FROM object1 TO object2
+ * @endcode
+ */
 V2D vpp(V2D r1, V2D r2)
 { 
     V2D c;
@@ -70,7 +122,16 @@ V2D vpp(V2D r1, V2D r2)
     return c;
 }
 
-/*------------------------------------*/
+/**
+ * @brief Normalize a vector (convert to unit vector).
+ * @param V2D a - Input vector
+ * @return V2D â (unit vector in direction of a)
+ * @details Returns a unit vector with the same direction as input vector a. If the magnitude is near zero (< 1e-12), returns zero vector. Uses the formula: a/|a|
+ * @code
+ * V2D unit_vec = vnorm(vec);
+ * // |unit_vec| ≈ 1 (unless vec was zero)
+ * @endcode
+ */
 V2D vnorm( V2D a)
 { 
     V2D c;
@@ -87,7 +148,23 @@ V2D vnorm( V2D a)
     return c;
 }
 
-/*------------------------------------*/
+/**
+ * @brief Calculate gravitational force between two objects.
+ * @param double m1 - Mass of first object
+ * @param V2D r1v - Position vector of first object
+ * @param double m2 - Mass of second object
+ * @param V2D r2v - Position vector of second object
+ * @return V2D Gravitational force vector on object 1 due to object 2
+ * @details Calculates the gravitational force using Newton's law of universal gravitation:
+ * F = G * m1 * m2 / r² * (r̂)
+ * where r̂ is the unit vector from object 1 to object 2.
+ * Avoids division by zero by setting minimum distance of 1e-6.
+ * Force direction: from object 1 toward object 2 (attractive force).
+ * @code
+ * V2D force = gravforce(mass1, pos1, mass2, pos2);
+ * // force on object 1 due to object 2
+ * @endcode
+ */
 V2D gravforce(double m1, V2D r1v, double m2, V2D r2v)
 {
     V2D r3v, fv, r3nv;
@@ -105,7 +182,17 @@ V2D gravforce(double m1, V2D r1v, double m2, V2D r2v)
     return fv;
 }
 
-/*------------------------------------*/
+/**
+ * @brief Create a vector with specified components.
+ * @param double x - X-component
+ * @param double y - Y-component
+ * @return V2D Vector with components (x, y)
+ * @details Convenience function to initialize vectors with given coordinates.
+ * @code
+ * V2D vec = vset(3.14, -2.71);
+ * // vec.x = 3.14, vec.y = -2.71
+ * @endcode
+ */
 V2D vset(double x, double y)
 {
     V2D a;
@@ -114,13 +201,43 @@ V2D vset(double x, double y)
     return a;
 }
 
-/*------------------------------------*/
+/**
+ * @brief Calculate distance between two objects.
+ * @param TObj obj1 - First object
+ * @param TObj obj2 - Second object
+ * @return double Euclidean distance between objects
+ * @details Computes the straight-line distance between the positions
+ * of two objects using their position vectors.
+ * @code
+ * double dist = dobjs(satellite, planet);
+ * // dist = |satellite.rv - planet.rv|
+ * @endcode
+ */
 double dobjs(TObj obj1, TObj obj2)
 {
     return vmetro(vpp(obj1.rv, obj2.rv));
 }
 
-/*------------------------------------*/
+/**
+ * @brief Move an object based on applied force.
+ * @param TObj *pobj - Pointer to object to move (modified in place)
+ * @param V2D fv - Total force vector acting on object
+ * @param double dt - Time step for integration
+ * @return void
+ * @details Updates object's position and velocity using Newton's second law.
+ * Algorithm (Euler integration):
+ * 1. a = F/m (acceleration from force)
+ * 2. Δu = a * dt (velocity change)
+ * 3. u = u + Δu (update velocity)
+ * 4. Δr = u * dt (position change)
+ * 5. nextrv = r + Δr (store next position)
+ * 
+ * Only movable objects are updated (planets remain fixed).
+ * @code
+ * objmove(&satellite, totalForce, 0.001);
+ * // Updates satellite's velocity and calculates next position
+ * @endcode
+ */
 void objmove(TObj *pobj, V2D fv, double dt)
 {
     if ((*pobj).movable) 
@@ -133,121 +250,178 @@ void objmove(TObj *pobj, V2D fv, double dt)
     }
 }
 
-/*------------------------------------*/
+/**
+ * @brief Initialize the three fixed planets.
+ * @param TObj planets[] - Array to store planet objects
+ * @return void
+ * @details Sets up three planets with fixed positions and masses.
+ * Planets are:
+ * 1. Planet_A: Mass 5000 at (5, 5)
+ * 2. Planet_B: Mass 5000 at (-5, 5)
+ * 3. Planet_C: Mass 500 at (0, -5)
+ * All planets have zero velocity and are immovable.
+ * @code
+ * initializePlanets(planet_array);
+ * // Creates three fixed planets at specified positions
+ * @endcode
+ */
 void initializePlanets(TObj planets[])
 {
     planets[0].m = 5000;
     planets[0].rv = vset(5, 5);
     planets[0].uv = vset(0, 0);
     planets[0].movable = 0;
-    strcpy(planets[0].name, "Central");
+    strcpy(planets[0].name, "Planet_A");
     
     planets[1].m = 5000;
     planets[1].rv = vset(-5, 5);
     planets[1].uv = vset(0, 0);
     planets[1].movable = 0;
-    strcpy(planets[1].name, "Shepherd1");
+    strcpy(planets[1].name, "Planet_B");
     
     planets[2].m = 500;
     planets[2].rv = vset(0, -5);
     planets[2].uv = vset(0, 0);
     planets[2].movable = 0;
-    strcpy(planets[2].name, "Shepherd2");
+    strcpy(planets[2].name, "Planet_C");
 }
 
-/*------------------------------------*/
+/**
+ * @brief Input satellite data from user.
+ * @param TObj satellites[] - Array to store satellite objects
+ * @param int *n - Pointer to variable storing number of satellites
+ * @return void
+ * @details Interactive function that prompts user for satellite parameters:
+ * - Name (up to 19 characters)
+ * - Mass (should be small compared to planets)
+ * - Initial position (x, y)
+ * - Initial velocity (vx, vy)
+ * Also promts the user for the integration distance dt and total simualtion time
+ * Validates input for number of satellites (1-10).
+ * @code
+ * int num_sats;
+ * inputSatellites(satellite_array, &num_sats);
+ * // Prompts user for satellite data
+ * @endcode
+ */
 void inputSatellites(TObj satellites[], int *n)
 {
     printf("===============================================\n");
-    printf("PROGRAMMA PROSOMMOIWSHS DORUFORWN\n");
-    printf("Yparxoun 3 statheroi planhtes me terasties mazes:\n");
-    printf("1. Planet_A (m=10000) sthn thesh (0,0)\n");
-    printf("2. Planet_B (m=5000) sthn thesh (40,40)\n");
-    printf("3. Planet_C (m=8000) sthn thesh (-30,30)\n");
+    printf("    PROGRAMMA PROSOMMOIWSHS DORUFORWN\n");
+    printf("     Yparxoun 3 statheroi planhtes\n");
+    printf("1. Planet_A (m=5000) sthn thesh (5, 5)\n");
+    printf("2. Planet_B (m=5000) sthn thesh (-5, 5)\n");
+    printf("3. Planet_C (m=500)  sthn thesh (0,-5)\n");
     printf("===============================================\n\n");
     
     do {
-        printf("Doste arithmo doruforwn (3-10): ");
+        printf("Dose arithmo doruforwn (1-10): ");
         scanf("%d", n);
         if (*n < 1 || *n > 10) 
         {
-            printf("Lathos! Prepei 3-10 doruforoi.\n");
+            printf("Sfalma! Prepei 1-10 doruforoi.\n");
         }
-    } while (*n < 3 || *n > 10);
+    } while (*n < 1 || *n > 10);
     
     printf("\nEisagwgh stoixeiwn doruforwn:\n");
     for (int i = 0; i < *n; i++) 
     {
         printf("\n--- Doruforos %d ---\n", i+1);
         printf("Onoma (max 19 xaraktires): ");
-        scanf("%s", satellites[i].name);
+        scanf(" %[^\n]", satellites[i].name);
         
-        printf("Maza (mikrh se sxesh me tous planhtes): ");
+        printf("Maza: ");
         scanf("%lf", &satellites[i].m);
         
-        printf("Thesh arxikhs (x y): ");
+        printf("Arxikh thesh (x y): ");
         scanf("%lf %lf", &satellites[i].rv.x, &satellites[i].rv.y);
         
-        printf("Taxythta arxikh (ux uy): ");
+        printf("Arxikh taxythta  (ux uy): ");
         scanf("%lf %lf", &satellites[i].uv.x, &satellites[i].uv.y);
         
         satellites[i].movable = 1;
         satellites[i].nextrv = satellites[i].rv;
         satellites[i].av = vset(0, 0);
-        
-        // Ypologismos taxytitas gia kyklikh troxia gyrw apo Planet_A
-        printf("\nSymeiwsh: Gia kyklikh troxia gyrw apo Planet_A (0,0):\n");
-        double r = vmetro(satellites[i].rv); // Apostash apo Planet_A
-        double u_circular = sqrt(G * 10000 / r); // G*M/r gia Planet_A
-        printf("  H taxythta gia kyklikh troxia einai: %.3f\n", u_circular);
-        printf("  H taxythta sas einai: %.3f\n", vmetro(satellites[i].uv));
     }
+
+    printf("\x1b[33m" "WARNING ! O logos dt/time na einai megalitero tou 1000" "\x1b[0m" "\n");
+
+    do{
+        printf("Doste xrono bhmatos dt: ");
+        scanf("%lf", &dt);
+    
+        printf("Doste xrono prosomoiwshs: ");
+        scanf("%lf", &total_time);
+        if(total_time/dt < 1000.0)
+        {
+            printf("\x1b[31m" "\x1b[1m" "Sfalma! O logos dt/time den einai megalitero tou 1000." "\x1b[0m" "\n");
+        }
+    } while (total_time/dt < 1000.0);
+
 }
 
+/**
+ * @brief Create default internal satellites for testing.
+ * @param TObj planets[] - Array to store satellite objects (appended after planets)
+ * @return void
+ * @details Creates three test satellites with predefined parameters:
+ * 1. A: Mass 10 at (0.1, 0) with velocity (10, 10)
+ * 2. B: Mass 10 at (-0.1, 0) with velocity (-10, 10)
+ * 3. C: Mass 10 at (0, -5) with velocity (20, 5)
+ * Used only for testing.
+ * @code
+ * internal_Satellites(objects);
+ * // Adds three test satellites starting at index 3
+ * @endcode
+ */
 void internal_Satellites(TObj planets[])
 {
 
-    planets[3].m =15;
-    planets[3].rv = vset(20, 20);
-    planets[3].uv = vset(-10, 0);
+    planets[3].m = 10;
+    planets[3].rv = vset(0.1, 0);
+    planets[3].uv = vset(10, 10);
     planets[3].movable = 1;
-    strcpy(planets[3].name, "Flower_1");
+    strcpy(planets[3].name, "A");
     
-    // planets[4].m = 50;
-    // planets[4].rv = vset(30, 0);
-    // planets[4].uv = vset(0, 20);
-    // planets[4].movable = 1;
-    // strcpy(planets[4].name, "Flower_2");
+    planets[4].m = 10;
+    planets[4].rv = vset(-0.1, 0);
+    planets[4].uv = vset(-10, 10);
+    planets[4].movable = 1;
+    strcpy(planets[4].name, "B");
     
-    // planets[5].m = 50;
-    // planets[5].rv = vset(30, 0);
-    // planets[5].uv = vset(0, 20);
-    // planets[5].movable = 1;
-    // strcpy(planets[5].name, "Planet_B");
-    
-    // planets[6].m = 4;
-    // planets[6].rv = vset(31, 0);
-    // planets[6].uv = vset(0, 27);
-    // planets[6].movable = 1;
-    // strcpy(planets[6].name, "Moon_B");
-
-    // planets[7].m = 10;
-    // planets[7].rv = vset(-4, 3);
-    // planets[7].uv = vset(-10, 10);
-    // planets[7].movable = 1;
-    // strcpy(planets[7].name, "Eyebrow 2");
+    planets[5].m = 10;
+    planets[5].rv = vset(0, -5);
+    planets[5].uv = vset(20, 5);
+    planets[5].movable = 1;
+    strcpy(planets[5].name, "C");
 }
 
-/*------------------------------------*/
-void readSatellitesFromFile(TObj satellites[], int *n)
+/**
+ * @brief Read satellite data and simulation parameters from file.
+ * @param TObj satellites[] - Array to store satellite objects
+ * @param int *n - Pointer to variable storing number of satellites
+ * @param char **argv - Command line arguments (argv[1] should be filename)
+ * @return int 0 on success, 1 on file error
+ * @details Reads satellite data from specified file. File format:
+ * - Each line: name mass x y vx vy
+ * - Last line: dt = value time = value
+ * Supports comments (lines starting with # or /) and empty lines.
+ * Example file content:
+ * @code
+ * Satellite1 10.0 0.1 0.0 10.0 10.0
+ * Satellite2 10.0 -0.1 0.0 -10.0 10.0
+ * dt = 0.000001 time = 11.37
+ * @endcode
+ */
+int readSatellitesFromFile(TObj satellites[], int *n, char **argv)
 {
-    FILE *fp = fopen("satellite_data.txt", "r");
+    FILE *fp = fopen(argv[1], "r");
     if (fp == NULL) 
     {
-        return;
+        return 1;
     }
     
-    printf("Reading satellites from satellite_data.txt...\n");
+    printf("Reading satellites from %s ...\n", argv[1]);
     
     *n = 0;
     char line[256];
@@ -258,8 +432,27 @@ void readSatellitesFromFile(TObj satellites[], int *n)
         if (line[0] == '\n' || line[0] == '#' || line[0] == '/') 
         {
             continue;
+        } 
+
+        if (strstr(line, "dt =") != NULL || strstr(line, "time =") != NULL) 
+        {
+            // Try to extract dt and time values
+            if (sscanf(line, "dt = %lf time = %lf", &dt, &total_time) == 2) 
+            {
+                //printf("  Found simulation parameters: dt = %g, total_time = %g\n", &dt, &total_time);
+            } 
+            else if (sscanf(line, "dt=%lf time=%lf", &dt, &total_time) == 2) 
+            {
+                //printf("  Found simulation parameters: dt = %g, total_time = %g\n", &dt, &total_time);
+            }
+            if(total_time/dt < 1000.0)
+            {
+                printf("\x1b[31m" "\x1b[1m" "Sfalma! O logos dt/time den einai megalitero tou 1000." "\x1b[0m" "\n");
+                return 1;
+            }
+            else {continue;} // Skip this line as it's not satellite data
         }
-        
+
         char name[20];
         double m, x, y, vx, vy;
         
@@ -275,7 +468,7 @@ void readSatellitesFromFile(TObj satellites[], int *n)
             satellites[*n].nextrv = satellites[*n].rv;
             satellites[*n].av = vset(0, 0);
             
-            printf("  Loaded: %s (m=%.2f, pos=(%.1f,%.1f), vel=(%.2f,%.2f))\n", name, m, x, y, vx, vy);
+            //printf("  Loaded: %s (m=%.2f, pos=(%.1f,%.1f), vel=(%.2f,%.2f))\n", name, m, x, y, vx, vy);
             
             (*n)++;
         }
@@ -283,15 +476,33 @@ void readSatellitesFromFile(TObj satellites[], int *n)
     
     fclose(fp);
     
-    if (*n == 0) {
-        printf("WARNING: No satellites found in file. Using default system.\n");
-        readSatellitesFromFile(satellites, n); // Recursive fallback
-    } else {
+    if (*n == 0) 
+    {
+        printf("WARNING: No satellites found in file.\n");
+        readSatellitesFromFile(satellites, n, argv); // Recursive fallback
+    } 
+    else 
+    {
         printf("Successfully loaded %d satellites.\n", *n);
     }
+    return 0;
 }
 
-/*------------------------------------*/
+/**
+ * @brief Save current system state to file.
+ * @param FILE *fp - File pointer for output (must be open for writing)
+ * @param TObj objects[] - Array of all objects (planets + satellites)
+ * @param int total_objects - Total number of objects in simulation
+ * @param double t - Current simulation time
+ * @return void
+ * @details Writes a CSV-formatted line with current positions of all objects.
+ * Format: time;obj1_x;obj1_y;obj2_x;obj2_y;...
+ * Used for creating trajectory data for visualization.
+ * @code
+ * saveTrajectories(fp, objects, total_objects, 5.25);
+ * // Saves positions at time 5.25
+ * @endcode
+ */
 void saveTrajectories(FILE *fp, TObj objects[], int total_objects, double t)
 {
     fprintf(fp, "%.6f", t);
@@ -302,7 +513,22 @@ void saveTrajectories(FILE *fp, TObj objects[], int total_objects, double t)
     fprintf(fp, "\n");
 }
 
-/*------------------------------------*/
+/**
+ * @brief Print detailed information about the simulation system.
+ * @param TObj objects[] - Array of all objects (planets + satellites)
+ * @param int total_objects - Total number of objects in simulation
+ * @param int num_satellites - Number of satellites (excluding planets)
+ * @return void
+ * @details Displays comprehensive information about all objects:
+ * - Fixed planets (mass, position)
+ * - Satellites (mass, position, velocity)
+ * - Collision detection parameters
+ * Useful for verification and debugging.
+ * @code
+ * printSystemInfo(objects, 6, 3);
+ * // Prints info for 3 planets + 3 satellites
+ * @endcode
+ */
 void printSystemInfo(TObj objects[], int total_objects, int num_satellites)
 {
     printf("\n===============================================\n");
@@ -320,14 +546,34 @@ void printSystemInfo(TObj objects[], int total_objects, int num_satellites)
     {
         printf("  %s: m=%.2f, thesh=(%.2f, %.2f), taxythta=(%.2f, %.2f)\n", objects[i].name, objects[i].m, objects[i].rv.x, objects[i].rv.y, objects[i].uv.x, objects[i].uv.y);
     }
+
+    printf("\nXRONOS PROSOMIOSHS: %g \nBHMA dt: %g\n", total_time, dt);
+
     printf("===============================================\n\n");
 }
 
-/*------------------------------------*/
-int main(void)
+/**
+ * @brief Main simulation function.
+ * @param int argc - Number of command line arguments
+ * @param char *argv[] - Array of command line arguments
+ * @return int 0 on successful execution, 1 on error
+ * @details Main entry point for the gravitational simulation program.
+ * Performs the following steps:
+ * 1. Initialize system (planets and satellites)
+ * 2. Set up simulation parameters (dt, total time)
+ * 3. Open output file for trajectory data
+ * 4. Run simulation loop
+ * 5. Calculate gravitational forces and update positions
+ * 6. Save results and close files
+ * 
+ * Command line usage: program_file.exe [input_file]
+ * If no input file specified, promts the user to enter the parameters from the keyboard.
+ * @see initializePlanets(), readSatellitesFromFile(), saveTrajectories(), gravforce(), objmove()
+ */
+int main(int argc, char **argv)
 {
     FILE *fp;
-    double t, dt, total_time;
+    double t;
     int num_satellites, steps, i, j, k;
     int total_objects;
     TObj objects[MAX_OBJECTS];
@@ -336,34 +582,30 @@ int main(void)
     // Arxikopoiisi twn 3 planhtwn
     initializePlanets(objects);
     
-    // Eidagwgh doruforwn apo xrhsth
-    //inputSatellites(&objects[NUM_PLANETS], &num_satellites);
-    
-    readSatellitesFromFile(&objects[NUM_PLANETS], &num_satellites);
+    // Anagnwsh doryforwn apo arxeio
+    if(readSatellitesFromFile(&objects[NUM_PLANETS], &num_satellites, argv) == 1)
+    {
+        // Eidagwgh doruforwn apo xrhsth
+        inputSatellites(&objects[NUM_PLANETS], &num_satellites);
+    }
 
-    //internal_Satellites(objects);
-    //num_satellites = 1;
+    // internal_Satellites(objects);
+    // num_satellites = 5;
+    // dt = 0.000001;
+    // total_time = 11.37;
     
     total_objects = NUM_PLANETS + num_satellites;
     
-    // printf("\nDoste xrono bhmatos dt (mikro, p.x. 0.001): ");
-    // scanf("%lf", &dt);
-    
-    // printf("Doste arithmo bhmatwn prosomoiwshs (p.x. 10000-50000): ");
-    // scanf("%d", &steps);
-    
-    dt = 0.000001;
-    total_time = 11.37;
     steps = total_time/dt;
 
     // Emfanish plhroforiwn systhmatos
     printSystemInfo(objects, total_objects, num_satellites);
     
     // Anoigma arxeiou gia apothikeysh
-    fp = fopen("orbits_data.csv", "w");
+    fp = fopen("Kiriazis_orbit_data.csv", "w");
     if (fp == NULL) 
     {
-        printf("Adynato anoigma arxeiou!\n");
+        printf("Adynato to anoigma arxeiou!\n");
         return 1;
     }
     
@@ -393,15 +635,15 @@ int main(void)
             saveTrajectories(fp, objects, total_objects, t);
         }
         
-        // Emfanish kathe 500 bhmata
-        // if (i % 500 == 0) {
-        //     printf("t = %.2f: ", t);
-        //     for (j = NUM_PLANETS; j < total_objects; j++) {
-        //         double dist_to_A = dobjs(objects[j], objects[0]); // Apostash apo Planet_A
-        //         printf("%s(dist=%.1f) ", objects[j].name, dist_to_A);
-        //     }
-        //     printf("\n");
-        // }
+        //Emfanish kathe 500 bhmata
+        if (i % (steps/DISPLAY_RATE) == 0) {
+            printf("t = %.2f: ", t);
+            for (j = NUM_PLANETS; j < total_objects; j++) {
+                double dist_to_A = dobjs(objects[j], objects[0]); // Apostash apo Planet_A
+                printf("%s(dist=%.1f) ", objects[j].name, dist_to_A);
+            }
+            printf("\n");
+        }
         
         // Ypologismos dynamewn gia kathe doruforo
         for (j = 0; j < total_objects; j++) 
