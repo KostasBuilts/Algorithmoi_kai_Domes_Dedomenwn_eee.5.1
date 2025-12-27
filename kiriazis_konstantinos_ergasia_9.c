@@ -12,6 +12,76 @@ kai N eisagomenous doruforous
 #define NUM_PLANETS     3   // Statheroi planhtes
 #define SAMPLES         1000 // Posa tha einai ta telika samples sto arxeio
 #define DISPLAY_RATE    50
+#define C_RESET         0
+#define C_RED           1
+#define C_GREEN         2
+#define C_YELLOW        3
+#define C_BLUE          4
+#define C_MAGENTA       5
+#define C_CYAN          6
+#define C_WHITE         7
+
+#ifdef _WIN32
+    #include <windows.h>
+
+    void print_color(const char *msg, int color)
+    {
+        static HANDLE hConsole = NULL;
+        static WORD defaultAttr;
+
+        if (!hConsole) {
+            CONSOLE_SCREEN_BUFFER_INFO info;
+            hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+            GetConsoleScreenBufferInfo(hConsole, &info);
+            defaultAttr = info.wAttributes;
+        }
+
+        WORD attr = FOREGROUND_INTENSITY;
+
+        switch (color) {
+            case C_RED:     attr |= FOREGROUND_RED; break;
+            case C_GREEN:   attr |= FOREGROUND_GREEN; break;
+            case C_YELLOW:  attr |= FOREGROUND_RED | FOREGROUND_GREEN; break;
+            case C_BLUE:    attr |= FOREGROUND_BLUE; break;
+            case C_MAGENTA: attr |= FOREGROUND_RED | FOREGROUND_BLUE; break;
+            case C_CYAN:    attr |= FOREGROUND_GREEN | FOREGROUND_BLUE; break;
+            case C_WHITE:   attr |= FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE; break;
+            case C_RESET:
+            default:
+                SetConsoleTextAttribute(hConsole, defaultAttr);
+                printf("%s", msg);
+                return;
+        }
+
+        SetConsoleTextAttribute(hConsole, attr);
+        printf("%s", msg);
+        SetConsoleTextAttribute(hConsole, defaultAttr);
+    }
+
+#else   /* Linux / Unix */
+
+    void print_color(const char *msg, int color)
+    {
+        const char *code;
+
+        switch (color) {
+            case C_RED:     code = "\033[1;31m"; break;
+            case C_GREEN:   code = "\033[1;32m"; break;
+            case C_YELLOW:  code = "\033[1;33m"; break;
+            case C_BLUE:    code = "\033[1;34m"; break;
+            case C_MAGENTA: code = "\033[1;35m"; break;
+            case C_CYAN:    code = "\033[1;36m"; break;
+            case C_WHITE:   code = "\033[1;37m"; break;
+            case C_RESET:
+            default:
+                code = "\033[0m";
+                break;
+        }
+
+        printf("\x1b[1m%s%s\033[0m", code, msg);
+    }
+
+#endif
 
 typedef struct{ 
     double x;  /**< X-coordinate of the vector */
@@ -129,7 +199,7 @@ V2D vpp(V2D r1, V2D r2)
  * @details Returns a unit vector with the same direction as input vector a. If the magnitude is near zero (< 1e-12), returns zero vector. Uses the formula: a/|a|
  * @code
  * V2D unit_vec = vnorm(vec);
- * // |unit_vec| ≈ 1 (unless vec was zero)
+ * // |unit_vec| ˜ 1 (unless vec was zero)
  * @endcode
  */
 V2D vnorm( V2D a)
@@ -156,8 +226,8 @@ V2D vnorm( V2D a)
  * @param V2D r2v - Position vector of second object
  * @return V2D Gravitational force vector on object 1 due to object 2
  * @details Calculates the gravitational force using Newton's law of universal gravitation:
- * F = G * m1 * m2 / r² * (r̂)
- * where r̂ is the unit vector from object 1 to object 2.
+ * F = G * m1 * m2 / r² * (r^)
+ * where r^ is the unit vector from object 1 to object 2.
  * Avoids division by zero by setting minimum distance of 1e-6.
  * Force direction: from object 1 toward object 2 (attractive force).
  * @code
@@ -227,10 +297,10 @@ double dobjs(TObj obj1, TObj obj2)
  * @details Updates object's position and velocity using Newton's second law.
  * Algorithm (Euler integration):
  * 1. a = F/m (acceleration from force)
- * 2. Δu = a * dt (velocity change)
- * 3. u = u + Δu (update velocity)
- * 4. Δr = u * dt (position change)
- * 5. nextrv = r + Δr (store next position)
+ * 2. ?u = a * dt (velocity change)
+ * 3. u = u + ?u (update velocity)
+ * 4. ?r = u * dt (position change)
+ * 5. nextrv = r + ?r (store next position)
  * 
  * Only movable objects are updated (planets remain fixed).
  * @code
@@ -306,6 +376,7 @@ void initializePlanets(TObj planets[])
  */
 void inputSatellites(TObj satellites[], int *n)
 {
+	int i;
     printf("===============================================\n");
     printf("    PROGRAMMA PROSOMMOIWSHS DORUFORWN\n");
     printf("     Yparxoun 3 statheroi planhtes\n");
@@ -319,12 +390,12 @@ void inputSatellites(TObj satellites[], int *n)
         scanf("%d", n);
         if (*n < 1 || *n > 10) 
         {
-            printf("Sfalma! Prepei 1-10 doruforoi.\n");
+            print_color("Sfalma! Prepei 1-10 doruforoi.\n", C_RED);
         }
     } while (*n < 1 || *n > 10);
     
     printf("\nEisagwgh stoixeiwn doruforwn:\n");
-    for (int i = 0; i < *n; i++) 
+    for (i = 0; i < *n; i++) 
     {
         printf("\n--- Doruforos %d ---\n", i+1);
         printf("Onoma (max 19 xaraktires): ");
@@ -344,7 +415,7 @@ void inputSatellites(TObj satellites[], int *n)
         satellites[i].av = vset(0, 0);
     }
 
-    printf("\x1b[33m" "WARNING ! O logos dt/time na einai megalitero tou 1000" "\x1b[0m" "\n");
+    print_color("WARNING ! O logos dt/time na einai isws h megalhteros tou 1000\n", C_YELLOW);
 
     do{
         printf("Doste xrono bhmatos dt: ");
@@ -354,7 +425,7 @@ void inputSatellites(TObj satellites[], int *n)
         scanf("%lf", &total_time);
         if(total_time/dt < 1000.0)
         {
-            printf("\x1b[31m" "\x1b[1m" "Sfalma! O logos dt/time den einai megalitero tou 1000." "\x1b[0m" "\n");
+            print_color("Sfalma! O logos dt/time den einai megalitero tou 1000\n", C_RED);
         }
     } while (total_time/dt < 1000.0);
 
@@ -505,8 +576,9 @@ int readSatellitesFromFile(TObj satellites[], int *n, char **argv)
  */
 void saveTrajectories(FILE *fp, TObj objects[], int total_objects, double t)
 {
+	int i;
     fprintf(fp, "%.6f", t);
-    for (int i = 0; i < total_objects; i++) 
+    for (i = 0; i < total_objects; i++) 
     {
         fprintf(fp, ";%.6f;%.6f", objects[i].rv.x, objects[i].rv.y);
     }
@@ -531,18 +603,19 @@ void saveTrajectories(FILE *fp, TObj objects[], int total_objects, double t)
  */
 void printSystemInfo(TObj objects[], int total_objects, int num_satellites)
 {
+	int i;
     printf("\n===============================================\n");
     printf("SYSTHMA PROSOMMOIWSHS\n");
     printf("===============================================\n");
     printf("PLANHTES (STATHEROI):\n");
 
-    for (int i = 0; i < NUM_PLANETS; i++) 
+    for (i = 0; i < NUM_PLANETS; i++) 
     {
         printf("  %s: m=%.0f, thesh=(%.1f, %.1f)\n", objects[i].name, objects[i].m, objects[i].rv.x, objects[i].rv.y);
     }
     
     printf("\nDORUFOROI (KINOUMENOI):\n");
-    for (int i = NUM_PLANETS; i < total_objects; i++) 
+    for (i = NUM_PLANETS; i < total_objects; i++) 
     {
         printf("  %s: m=%.2f, thesh=(%.2f, %.2f), taxythta=(%.2f, %.2f)\n", objects[i].name, objects[i].m, objects[i].rv.x, objects[i].rv.y, objects[i].uv.x, objects[i].uv.y);
     }
